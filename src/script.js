@@ -168,30 +168,25 @@ class RecipeTextParser {
         ];
         
         instructionLines.forEach(line => {
-            console.log('Analyzing instruction line:', line);
-            
             // Look for quantity + ingredient patterns in instructions
             const quantityPatterns = [
                 // "Add 2 cups of rice"
-                /(?:add|use|mix\s+in|combine|stir\s+in|pour)\s+(\d+(?:\/\d+)?(?:\.\d+)?)\s+(\w+)\s+(?:of\s+)?(\w+(?:\s+\w+)*)/gi,
+                /(?:add|use|mix\s+in|combine|stir\s+in|pour)\s+(\d+(?:\/\d+)?(?:\.\d+)?)\s+(\w+)\s+(?:of\s+)?(\w+(?:\s+\w+)*)/i,
                 // "2 tablespoons olive oil"
-                /(\d+(?:\/\d+)?(?:\.\d+)?)\s+(tablespoon|tbsp|teaspoon|tsp|cup|pound|lb|ounce|oz|gram|g)\s+(\w+(?:\s+\w+)*)/gi,
+                /(\d+(?:\/\d+)?(?:\.\d+)?)\s+(tablespoon|tbsp|teaspoon|tsp|cup|pound|lb|ounce|oz|gram|g)\s+(\w+(?:\s+\w+)*)/i,
                 // "Heat oil in pan" (no quantity - estimate)
-                /(?:heat|add|use|cook\s+with|sauté\s+in)\s+(\w+(?:\s+\w+)*?)(?:\s+in|\s+until|\s+for|$)/gi
+                /(?:heat|add|use|cook\s+with|sauté\s+in)\s+(\w+(?:\s+\w+)*?)(?:\s+in|\s+until|\s+for|$)/i
             ];
             
             quantityPatterns.forEach(pattern => {
-                let match;
-                while ((match = pattern.exec(line)) !== null) {
-                    console.log('Pattern match found:', match);
-                    
+                const matches = [...line.matchAll(new RegExp(pattern.source, 'gi'))];
+                matches.forEach(match => {
                     if (match.length >= 4) {
                         // Pattern with quantity, unit, ingredient
                         const [, quantity, unit, ingredient] = match;
                         const cleanIngredient = this.cleanIngredientName(ingredient);
                         if (this.isLikelyIngredient(cleanIngredient, ingredientDatabase)) {
                             ingredients[cleanIngredient] = `${quantity} ${unit}`;
-                            console.log('Added ingredient with quantity:', cleanIngredient, `${quantity} ${unit}`);
                         }
                     } else if (match.length === 2) {
                         // Pattern with just ingredient (no quantity)
@@ -199,27 +194,29 @@ class RecipeTextParser {
                         if (this.isLikelyIngredient(ingredient, ingredientDatabase)) {
                             if (!ingredients[ingredient]) { // Don't overwrite if we already have a quantity
                                 ingredients[ingredient] = 'as needed';
-                                console.log('Added ingredient without quantity:', ingredient);
                             }
                         }
                     }
-                }
+                });
             });
             
             // Also look for ingredients from our database mentioned in instructions
             ingredientDatabase.forEach(ingredient => {
-                const regex = new RegExp(`\\b${ingredient}s?\\b`, 'gi');
+                const regex = new RegExp(`\\b${ingredient}s?\\b`, 'i');
                 if (regex.test(line) && !ingredients[ingredient]) {
                     // Try to extract quantity if mentioned nearby
-                    const quantityBefore = line.match(new RegExp(`(\\d+(?:\\/\\d+)?(?:\\.\\d+)?)\\s+(\\w+)\\s+${ingredient}s?`, 'gi'));
-                    const quantityAfter = line.match(new RegExp(`${ingredient}s?[^.]*?(\\d+(?:\\/\\d+)?(?:\\.\\d+)?)\\s+(\\w+)`, 'gi'));
+                    const quantityBeforePattern = new RegExp(`(\\d+(?:\\/\\d+)?(?:\\.\\d+)?)\\s+(\\w+)\\s+${ingredient}s?`, 'i');
+                    const quantityAfterPattern = new RegExp(`${ingredient}s?[^.]*?(\\d+(?:\\/\\d+)?(?:\\.\\d+)?)\\s+(\\w+)`, 'i');
+                    
+                    const quantityBefore = line.match(quantityBeforePattern);
+                    const quantityAfter = line.match(quantityAfterPattern);
                     
                     if (quantityBefore) {
-                        const [, qty, unit] = quantityBefore[0].match(/([\d\/\.]+)\s+(\w+)/);
+                        const [, qty, unit] = quantityBefore;
                         ingredients[ingredient] = `${qty} ${unit}`;
                         console.log('Found ingredient with quantity before:', ingredient, `${qty} ${unit}`);
                     } else if (quantityAfter) {
-                        const [, qty, unit] = quantityAfter[0].match(/([\d\/\.]+)\s+(\w+)/);
+                        const [, qty, unit] = quantityAfter;
                         ingredients[ingredient] = `${qty} ${unit}`;
                         console.log('Found ingredient with quantity after:', ingredient, `${qty} ${unit}`);
                     } else {
