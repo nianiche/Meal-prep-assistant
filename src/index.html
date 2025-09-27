@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meal Prep Box Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📦 Meal Prep Box Assistant</h1>
+            <p>Distribute ingredients across your 5 meal prep boxes for the week</p>
+        </header>
+
+        <main>
+            <section class="recipe-selection">
+                <h2>1. Assign Recipes to Days</h2>
+                <div class="day-recipe-grid">
+                    <div class="day-column" data-day="Monday">
+                        <h3>Monday</h3>
+                        <select class="recipe-selector" data-day="Monday">
+                            <option value="">No Recipe</option>
+                        </select>
+                    </div>
+                    <div class="day-column" data-day="Tuesday">
+                        <h3>Tuesday</h3>
+                        <select class="recipe-selector" data-day="Tuesday">
+                            <option value="">No Recipe</option>
+                        </select>
+                    </div>
+                    <div class="day-column" data-day="Wednesday">
+                        <h3>Wednesday</h3>
+                        <select class="recipe-selector" data-day="Wednesday">
+                            <option value="">No Recipe</option>
+                        </select>
+                    </div>
+                    <div class="day-column" data-day="Thursday">
+                        <h3>Thursday</h3>
+                        <select class="recipe-selector" data-day="Thursday">
+                            <option value="">No Recipe</option>
+                        </select>
+                    </div>
+                    <div class="day-column" data-day="Friday">
+                        <h3>Friday</h3>
+                        <select class="recipe-selector" data-day="Friday">
+                            <option value="">No Recipe</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <section class="ingredient-distribution">
+                <h2>2. Distribute Ingredients</h2>
+                <div class="ingredient-controls">
+                    <div class="current-ingredient">
+                        <h3 id="current-ingredient-name">Select recipes to start distributing ingredients</h3>
+                        <div class="ingredient-navigation">
+                            <button id="prev-ingredient" disabled>← Previous</button>
+                            <span id="ingredient-counter">0 / 0</span>
+                            <button id="next-ingredient" disabled>Next →</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="meal-prep-boxes">
+                    <div class="prep-box" data-day="Monday">
+                        <h3>Monday Box 📦</h3>
+                        <div class="recipe-name"></div>
+                        <div class="ingredient-amount" id="monday-amount">-</div>
+                    </div>
+                    <div class="prep-box" data-day="Tuesday">
+                        <h3>Tuesday Box 📦</h3>
+                        <div class="recipe-name"></div>
+                        <div class="ingredient-amount" id="tuesday-amount">-</div>
+                    </div>
+                    <div class="prep-box" data-day="Wednesday">
+                        <h3>Wednesday Box 📦</h3>
+                        <div class="recipe-name"></div>
+                        <div class="ingredient-amount" id="wednesday-amount">-</div>
+                    </div>
+                    <div class="prep-box" data-day="Thursday">
+                        <h3>Thursday Box 📦</h3>
+                        <div class="recipe-name"></div>
+                        <div class="ingredient-amount" id="thursday-amount">-</div>
+                    </div>
+                    <div class="prep-box" data-day="Friday">
+                        <h3>Friday Box 📦</h3>
+                        <div class="recipe-name"></div>
+                        <div class="ingredient-amount" id="friday-amount">-</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="shopping-summary">
+                <h2>3. Shopping List Summary</h2>
+                <div id="shopping-list" class="shopping-container">
+                    <p class="placeholder">Assign recipes to see your consolidated shopping list</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
