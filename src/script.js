@@ -82,16 +82,38 @@ Or make sure ingredients have measurements (2 cups, 1 tbsp, etc.)`);
         const ingredients = {};
         let servings = this.estimateServings(recipeText);
         
-        ingredientLines.forEach(line => {
+        console.log('Ingredient lines to parse:', ingredientLines);
+        
+        ingredientLines.forEach((line, index) => {
+            console.log(`Processing line ${index}:`, line);
             const parsed = this.parseIngredientLine(line);
+            console.log('Parsed result:', parsed);
             if (parsed) {
                 ingredients[parsed.ingredient] = parsed.amount;
             }
         });
         
+        console.log('Final ingredients object:', ingredients);
+        
         // Validate we found some ingredients
         if (Object.keys(ingredients).length === 0) {
-            throw new Error('No ingredients could be parsed. Please check your recipe format and make sure ingredients have quantities (like "2 cups flour").');
+            const debugInfo = `
+Debug Info:
+- Recipe name: "${recipeName}"
+- Ingredients section found at line: ${ingredientsStartIndex}
+- Ingredient lines (${ingredientLines.length}): ${JSON.stringify(ingredientLines, null, 2)}
+- Lines that look like ingredients: ${ingredientLines.filter(line => this.looksLikeIngredient(line)).length}
+
+Please try one of these formats:
+• 2 cups flour
+• 1 tbsp salt  
+• 3 eggs
+- 1/2 lb chicken
+- 2 tsp vanilla
+
+Or check the browser console for detailed parsing logs.`;
+            
+            throw new Error(`No ingredients could be parsed. ${debugInfo}`);
         }
         
         return {
@@ -208,46 +230,107 @@ Or make sure ingredients have measurements (2 cups, 1 tbsp, etc.)`);
     }
     
     parseIngredientLine(line) {
-        // Remove bullet points, dashes, numbers
+        // Store original line for debugging
+        const originalLine = line;
+        
+        // Remove bullet points, dashes, numbers at start
         line = line.replace(/^[-•*]\s*/, '').replace(/^\d+\.\s*/, '').trim();
         
-        if (!line || line.length < 3) return null;
+        if (!line || line.length < 2) return null;
         
-        // Try each measurement pattern
-        for (let pattern of this.measurementPatterns) {
+        // Add debug logging
+        console.log('Parsing line:', originalLine, '-> cleaned:', line);
+        
+        // Enhanced patterns that are more flexible
+        const enhancedPatterns = [
+            // Fraction + unit + ingredient: "1/2 cup flour"
+            /^(\d+\/\d+)\s+(\w+)\s+(.+)$/,
+            // Decimal + unit + ingredient: "1.5 cups flour"
+            /^(\d+\.?\d*)\s+(\w+)\s+(.+)$/,
+            // Range + unit + ingredient: "2-3 cloves garlic"
+            /^(\d+-\d+)\s+(\w+)\s+(.+)$/,
+            // Number + unit (no space) + ingredient: "2cups flour"
+            /^(\d+\.?\d*)(\w+)\s+(.+)$/,
+            // Just number + ingredient: "3 eggs"
+            /^(\d+\.?\d*)\s+(.+)$/,
+            // Unit at end: "flour 2 cups"
+            /^(.+?)\s+(\d+\.?\d*)\s+(\w+)$/,
+            // Parenthetical measurements: "tomatoes (1 can, 14 oz)"
+            /^(.+?)\s*\((\d+\.?\d*)\s*(\w+).*\).*$/,
+            // Just ingredient name (fallback)
+            /^(.+)$/
+        ];
+        
+        // Try enhanced patterns
+        for (let i = 0; i < enhancedPatterns.length; i++) {
+            const pattern = enhancedPatterns[i];
             const match = line.match(pattern);
+            
             if (match) {
-                let amount, unit, ingredient;
+                console.log('Pattern matched:', i, match);
                 
-                if (match.length === 4) {
-                    // Pattern with amount, unit, ingredient
-                    [, amount, unit, ingredient] = match;
-                    
-                    // Check if unit is a common measurement
-                    if (this.commonUnits.includes(unit.toLowerCase())) {
+                if (i <= 2) {
+                    // Patterns 0-2: amount + unit + ingredient
+                    const [, amount, unit, ingredient] = match;
+                    if (this.isValidUnit(unit)) {
                         return {
                             ingredient: this.cleanIngredientName(ingredient),
                             amount: `${amount} ${unit}`
                         };
                     }
-                }
-                
-                if (match.length === 3) {
-                    // Pattern with just amount and ingredient
-                    [, amount, ingredient] = match;
+                } else if (i === 3) {
+                    // Pattern 3: amount+unit (no space) + ingredient
+                    const [, amount, unit, ingredient] = match;
+                    if (this.isValidUnit(unit)) {
+                        return {
+                            ingredient: this.cleanIngredientName(ingredient),
+                            amount: `${amount} ${unit}`
+                        };
+                    }
+                } else if (i === 4) {
+                    // Pattern 4: just number + ingredient
+                    const [, amount, ingredient] = match;
                     return {
                         ingredient: this.cleanIngredientName(ingredient),
                         amount: amount
                     };
+                } else if (i === 5) {
+                    // Pattern 5: ingredient + amount + unit
+                    const [, ingredient, amount, unit] = match;
+                    if (this.isValidUnit(unit)) {
+                        return {
+                            ingredient: this.cleanIngredientName(ingredient),
+                            amount: `${amount} ${unit}`
+                        };
+                    }
+                } else if (i === 6) {
+                    // Pattern 6: ingredient (amount unit)
+                    const [, ingredient, amount, unit] = match;
+                    if (this.isValidUnit(unit)) {
+                        return {
+                            ingredient: this.cleanIngredientName(ingredient),
+                            amount: `${amount} ${unit}`
+                        };
+                    }
+                } else if (i === 7) {
+                    // Pattern 7: just ingredient name
+                    const [, ingredient] = match;
+                    if (ingredient.trim().length > 0) {
+                        return {
+                            ingredient: this.cleanIngredientName(ingredient),
+                            amount: 'as needed'
+                        };
+                    }
                 }
             }
         }
         
-        // If no pattern matches, treat whole line as ingredient with unknown amount
-        return {
-            ingredient: this.cleanIngredientName(line),
-            amount: 'as needed'
-        };
+        console.log('No pattern matched, returning null for:', originalLine);
+        return null;
+    }
+    
+    isValidUnit(unit) {
+        return this.commonUnits.includes(unit.toLowerCase());
     }
     
     cleanIngredientName(ingredient) {
@@ -663,6 +746,7 @@ class MealPrepBoxAssistant {
     
     attachRecipeInputHandlers() {
         const parseTextBtn = document.getElementById('parse-text-btn');
+        const debugParseBtn = document.getElementById('debug-parse-btn');
         const uploadFileBtn = document.getElementById('upload-file-btn');
         const fileInput = document.getElementById('recipe-file-input');
         const fileUploadArea = document.getElementById('file-upload-area');
@@ -684,6 +768,28 @@ class MealPrepBoxAssistant {
                 this.showParsedRecipe(currentParsedRecipe);
             } catch (error) {
                 alert(`Error parsing recipe: ${error.message}`);
+            }
+        });
+        
+        // Debug parse - shows detailed logging in console
+        debugParseBtn.addEventListener('click', () => {
+            const recipeText = document.getElementById('recipe-text-input').value.trim();
+            if (!recipeText) {
+                alert('Please enter some recipe text first!');
+                return;
+            }
+            
+            console.clear();
+            console.log('=== DEBUG RECIPE PARSING ===');
+            console.log('Input text:', recipeText);
+            
+            try {
+                currentParsedRecipe = this.recipeParser.parseRecipeText(recipeText);
+                console.log('✅ Parsing successful!', currentParsedRecipe);
+                alert('✅ Parsing successful! Check console (F12) for details.');
+            } catch (error) {
+                console.error('❌ Parsing failed:', error);
+                alert(`❌ Parsing failed: ${error.message}\n\nCheck console (F12) for detailed logs.`);
             }
         });
         

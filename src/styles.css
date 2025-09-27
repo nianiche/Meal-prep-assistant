@@ -155,7 +155,7 @@ section h2 {
     font-size: 0.8rem;
 }
 
-.parse-btn, .success-btn, .cancel-btn {
+.parse-btn, .success-btn, .cancel-btn, .debug-btn {
     padding: 12px 24px;
     border: none;
     border-radius: 25px;
@@ -175,6 +175,17 @@ section h2 {
 .parse-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.debug-btn {
+    background: linear-gradient(135deg, #ffc107 0%, #ff8f00 100%);
+    color: white;
+    font-size: 0.8rem;
+}
+
+.debug-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4);
 }
 
 .success-btn {
