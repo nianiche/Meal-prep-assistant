@@ -15,7 +15,7 @@ A modern web application designed to help you efficiently organize ingredients a
 
 ## 🚀 Live Demo
 
-[View Live Demo](https://your-username.github.io/meal-prep-assistant/) *(Replace with your actual GitHub Pages URL)*
+[View Live Demo](https://nianiche.github.io/meal-prep-assistant/) *(Replace with your actual GitHub Pages URL)*
 
 ## 🎯 How It Works
 

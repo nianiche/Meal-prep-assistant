@@ -14,6 +14,52 @@
         </header>
 
         <main>
+            <section class="recipe-input">
+                <h2>📝 Add Your Own Recipes</h2>
+                <div class="input-methods">
+                    <div class="input-method">
+                        <h3>Paste Recipe Text</h3>
+                        <textarea id="recipe-text-input" placeholder="Paste your recipe here...
+
+Example format:
+Chicken Tikka Masala
+
+Ingredients:
+- 2 lbs chicken breast, cut into chunks
+- 1 large onion, diced
+- 3 cloves garlic, minced
+- 1 tbsp fresh ginger, grated
+- 2 tsp garam masala
+- 1 cup heavy cream
+
+Instructions:
+1. Heat oil in large pan...
+2. Add chicken and cook..."></textarea>
+                        <button id="parse-text-btn" class="parse-btn">📋 Parse Recipe Text</button>
+                    </div>
+                    <div class="input-method">
+                        <h3>Upload Recipe File</h3>
+                        <div class="file-upload-area" id="file-upload-area">
+                            <input type="file" id="recipe-file-input" accept=".txt,.md" hidden>
+                            <div class="upload-content">
+                                <span class="upload-icon">📄</span>
+                                <p>Drop a text file here or click to browse</p>
+                                <small>Supports .txt and .md files</small>
+                            </div>
+                        </div>
+                        <button id="upload-file-btn" class="parse-btn">📁 Choose File</button>
+                    </div>
+                </div>
+                <div id="parse-result" class="parse-result hidden">
+                    <h3>✨ Parsed Recipe</h3>
+                    <div id="parsed-recipe-display"></div>
+                    <div class="result-actions">
+                        <button id="add-recipe-btn" class="success-btn">✅ Add to Recipes</button>
+                        <button id="cancel-parse-btn" class="cancel-btn">❌ Cancel</button>
+                    </div>
+                </div>
+            </section>
+
             <section class="recipe-selection">
                 <h2>1. Assign Recipes to Days</h2>
                 <div class="day-recipe-grid">
