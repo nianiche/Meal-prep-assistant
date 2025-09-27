@@ -29,6 +29,232 @@ class RecipeTextParser {
         const lines = recipeText.split('\n').map(line => line.trim()).filter(line => line);
         
         if (lines.length < 2) {
+            throw new Error('Recipe text is too short. Please provide a recipe with cooking instructions.');
+        }
+        
+        // Find recipe name (usually first non-empty line)
+        let recipeName = lines[0] || 'Untitled Recipe';
+        
+        // Try the new intelligent method-based parsing first
+        try {
+            console.log('🧠 Attempting intelligent method-based parsing...');
+            const intelligentResult = this.parseFromInstructions(recipeText, lines);
+            if (intelligentResult && Object.keys(intelligentResult.ingredients).length > 0) {
+                console.log('✅ Intelligent parsing successful!', intelligentResult);
+                return intelligentResult;
+            }
+        } catch (error) {
+            console.log('🔄 Intelligent parsing failed, falling back to traditional method:', error.message);
+        }
+        
+        // Fallback to traditional ingredients section parsing
+        return this.parseTraditionalFormat(recipeText, lines);
+    }
+    
+    parseFromInstructions(recipeText, lines) {
+        const recipeName = lines[0] || 'Untitled Recipe';
+        let servings = this.estimateServings(recipeText);
+        
+        // Find cooking instructions/method section
+        const instructionLines = this.findInstructionLines(lines);
+        console.log('Found instruction lines:', instructionLines);
+        
+        if (instructionLines.length === 0) {
+            throw new Error('No cooking instructions found to extract ingredients from');
+        }
+        
+        // Extract ingredients from instructions using NLP-like analysis
+        const ingredients = this.extractIngredientsFromInstructions(instructionLines);
+        console.log('Extracted ingredients from instructions:', ingredients);
+        
+        if (Object.keys(ingredients).length === 0) {
+            throw new Error('No ingredients could be extracted from cooking instructions');
+        }
+        
+        return {
+            name: recipeName,
+            servings: servings,
+            ingredients: ingredients,
+            id: this.generateId(recipeName),
+            source: 'intelligent-parsing'
+        };
+    }
+    
+    findInstructionLines(lines) {
+        const instructionLines = [];
+        let inInstructions = false;
+        
+        // Look for instruction section headers
+        const instructionHeaders = [
+            'instructions', 'method', 'directions', 'preparation', 'steps', 'recipe', 'cooking'
+        ];
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].toLowerCase().trim();
+            
+            // Check if this line is an instruction header
+            if (instructionHeaders.some(header => line.includes(header) && line.includes(':'))) {
+                inInstructions = true;
+                continue;
+            }
+            
+            // If we haven't found a header yet, look for lines that look like instructions
+            if (!inInstructions) {
+                // Lines starting with numbers or cooking verbs are likely instructions
+                if (this.looksLikeInstruction(line)) {
+                    inInstructions = true;
+                }
+            }
+            
+            // If we're in instructions, collect the lines
+            if (inInstructions) {
+                // Skip empty lines and headers
+                if (line && !instructionHeaders.some(header => line.includes(header))) {
+                    instructionLines.push(lines[i]); // Keep original case
+                }
+            }
+        }
+        
+        // If no structured instructions found, analyze all lines for instruction-like content
+        if (instructionLines.length === 0) {
+            console.log('No structured instructions found, analyzing all lines...');
+            for (let i = 1; i < lines.length; i++) { // Skip recipe title
+                if (this.looksLikeInstruction(lines[i].toLowerCase())) {
+                    instructionLines.push(lines[i]);
+                }
+            }
+        }
+        
+        return instructionLines;
+    }
+    
+    looksLikeInstruction(line) {
+        if (!line || line.length < 10) return false;
+        
+        // Check for numbered steps
+        if (/^\d+\.?\s/.test(line)) return true;
+        
+        // Check for cooking verbs
+        const cookingVerbs = [
+            'heat', 'cook', 'bake', 'fry', 'sauté', 'boil', 'simmer', 'mix', 'stir', 'add', 
+            'combine', 'whisk', 'blend', 'chop', 'dice', 'slice', 'melt', 'brown', 'season',
+            'pour', 'serve', 'garnish', 'preheat', 'prepare', 'place', 'remove', 'drain'
+        ];
+        
+        return cookingVerbs.some(verb => line.includes(verb));
+    }
+    
+    extractIngredientsFromInstructions(instructionLines) {
+        const ingredients = {};
+        
+        // Common ingredient patterns in instructions
+        const ingredientDatabase = [
+            // Proteins
+            'chicken', 'beef', 'pork', 'fish', 'salmon', 'turkey', 'bacon', 'ham', 'eggs',
+            // Vegetables  
+            'onion', 'garlic', 'tomato', 'carrot', 'celery', 'bell pepper', 'mushroom', 'broccoli',
+            'potato', 'sweet potato', 'spinach', 'lettuce', 'cucumber', 'zucchini',
+            // Grains & Starches
+            'rice', 'pasta', 'bread', 'flour', 'noodles', 'quinoa', 'oats',
+            // Dairy
+            'milk', 'cheese', 'butter', 'cream', 'yogurt', 'sour cream',
+            // Pantry items
+            'oil', 'olive oil', 'vegetable oil', 'salt', 'pepper', 'sugar', 'vanilla',
+            // Herbs & Spices
+            'basil', 'oregano', 'thyme', 'rosemary', 'parsley', 'cilantro', 'paprika',
+            'cumin', 'garlic powder', 'onion powder', 'black pepper',
+            // Liquids
+            'water', 'broth', 'stock', 'wine', 'lemon juice', 'vinegar', 'soy sauce'
+        ];
+        
+        instructionLines.forEach(line => {
+            console.log('Analyzing instruction line:', line);
+            
+            // Look for quantity + ingredient patterns in instructions
+            const quantityPatterns = [
+                // "Add 2 cups of rice"
+                /(?:add|use|mix\s+in|combine|stir\s+in|pour)\s+(\d+(?:\/\d+)?(?:\.\d+)?)\s+(\w+)\s+(?:of\s+)?(\w+(?:\s+\w+)*)/gi,
+                // "2 tablespoons olive oil"
+                /(\d+(?:\/\d+)?(?:\.\d+)?)\s+(tablespoon|tbsp|teaspoon|tsp|cup|pound|lb|ounce|oz|gram|g)\s+(\w+(?:\s+\w+)*)/gi,
+                // "Heat oil in pan" (no quantity - estimate)
+                /(?:heat|add|use|cook\s+with|sauté\s+in)\s+(\w+(?:\s+\w+)*?)(?:\s+in|\s+until|\s+for|$)/gi
+            ];
+            
+            quantityPatterns.forEach(pattern => {
+                let match;
+                while ((match = pattern.exec(line)) !== null) {
+                    console.log('Pattern match found:', match);
+                    
+                    if (match.length >= 4) {
+                        // Pattern with quantity, unit, ingredient
+                        const [, quantity, unit, ingredient] = match;
+                        const cleanIngredient = this.cleanIngredientName(ingredient);
+                        if (this.isLikelyIngredient(cleanIngredient, ingredientDatabase)) {
+                            ingredients[cleanIngredient] = `${quantity} ${unit}`;
+                            console.log('Added ingredient with quantity:', cleanIngredient, `${quantity} ${unit}`);
+                        }
+                    } else if (match.length === 2) {
+                        // Pattern with just ingredient (no quantity)
+                        const ingredient = this.cleanIngredientName(match[1]);
+                        if (this.isLikelyIngredient(ingredient, ingredientDatabase)) {
+                            if (!ingredients[ingredient]) { // Don't overwrite if we already have a quantity
+                                ingredients[ingredient] = 'as needed';
+                                console.log('Added ingredient without quantity:', ingredient);
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Also look for ingredients from our database mentioned in instructions
+            ingredientDatabase.forEach(ingredient => {
+                const regex = new RegExp(`\\b${ingredient}s?\\b`, 'gi');
+                if (regex.test(line) && !ingredients[ingredient]) {
+                    // Try to extract quantity if mentioned nearby
+                    const quantityBefore = line.match(new RegExp(`(\\d+(?:\\/\\d+)?(?:\\.\\d+)?)\\s+(\\w+)\\s+${ingredient}s?`, 'gi'));
+                    const quantityAfter = line.match(new RegExp(`${ingredient}s?[^.]*?(\\d+(?:\\/\\d+)?(?:\\.\\d+)?)\\s+(\\w+)`, 'gi'));
+                    
+                    if (quantityBefore) {
+                        const [, qty, unit] = quantityBefore[0].match(/([\d\/\.]+)\s+(\w+)/);
+                        ingredients[ingredient] = `${qty} ${unit}`;
+                        console.log('Found ingredient with quantity before:', ingredient, `${qty} ${unit}`);
+                    } else if (quantityAfter) {
+                        const [, qty, unit] = quantityAfter[0].match(/([\d\/\.]+)\s+(\w+)/);
+                        ingredients[ingredient] = `${qty} ${unit}`;
+                        console.log('Found ingredient with quantity after:', ingredient, `${qty} ${unit}`);
+                    } else {
+                        ingredients[ingredient] = 'as needed';
+                        console.log('Found ingredient without quantity:', ingredient);
+                    }
+                }
+            });
+        });
+        
+        return ingredients;
+    }
+    
+    isLikelyIngredient(word, ingredientDatabase) {
+        const cleaned = word.toLowerCase().trim();
+        
+        // Check against our ingredient database
+        if (ingredientDatabase.some(ingredient => 
+            cleaned.includes(ingredient) || ingredient.includes(cleaned))) {
+            return true;
+        }
+        
+        // Check if it's a common food word (not a cooking verb or utensil)
+        const nonIngredientWords = [
+            'heat', 'temperature', 'minutes', 'hours', 'pan', 'pot', 'bowl', 'oven',
+            'stove', 'until', 'golden', 'brown', 'hot', 'cold', 'done', 'ready'
+        ];
+        
+        return !nonIngredientWords.some(word => cleaned.includes(word));
+    }
+    
+    parseTraditionalFormat(recipeText, lines) {
+        const lines = recipeText.split('\n').map(line => line.trim()).filter(line => line);
+        
+        if (lines.length < 2) {
             throw new Error('Recipe text is too short. Please provide a recipe with ingredients.');
         }
         
@@ -120,7 +346,8 @@ Or check the browser console for detailed parsing logs.`;
             name: recipeName,
             servings: servings,
             ingredients: ingredients,
-            id: this.generateId(recipeName)
+            id: this.generateId(recipeName),
+            source: 'traditional-parsing'
         };
     }
     

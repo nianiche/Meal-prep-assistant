@@ -19,30 +19,29 @@
                 <div class="input-methods">
                     <div class="input-method">
                         <h3>Paste Recipe Text</h3>
-                        <textarea id="recipe-text-input" placeholder="Paste your recipe here...
+                        <textarea id="recipe-text-input" placeholder="🧠 NEW: Intelligent parsing! Just paste cooking instructions and ingredients will be extracted automatically!
 
-Example formats that work:
-
-WITH INGREDIENTS HEADER:
+TRADITIONAL FORMAT (still works):
 Chicken Tikka Masala
 Ingredients:
 - 2 lbs chicken breast
-- 1 large onion, diced
-- 3 cloves garlic
+- 1 large onion
 
-WITHOUT HEADER (just list ingredients):
-Easy Pasta
-2 cups spaghetti
-1 jar marinara sauce
-1/2 cup parmesan cheese
-2 tbsp olive oil
+INTELLIGENT PARSING (new!):
+Quick Scrambled Eggs
+Heat 1 tablespoon butter in a pan.
+Crack 3 eggs into a bowl with 2 tbsp milk.
+Season with salt and pepper to taste.
+Cook for 2 minutes, stirring gently.
 
-SIMPLE LIST:
-Scrambled Eggs
-• 3 eggs
-• 2 tbsp butter  
-• 1/4 cup milk
-• Salt to taste"></textarea>
+PASTA RECIPE (method only):
+Simple Pasta
+Boil 8 oz spaghetti in salted water for 10 minutes.
+Heat 2 tbsp olive oil and add 3 cloves garlic.
+Add 1 can crushed tomatoes and 1 tsp basil.
+Toss with 1/2 cup parmesan cheese.
+
+The AI will find: butter, eggs, milk, salt, pepper, spaghetti, olive oil, garlic, tomatoes, basil, parmesan cheese - with quantities!"></textarea>
                         <button id="parse-text-btn" class="parse-btn">📋 Parse Recipe Text</button>
                         <button id="debug-parse-btn" class="debug-btn">🔧 Debug Parse (Check Console)</button>
                     </div>
