@@ -28,15 +28,51 @@ class RecipeTextParser {
     parseRecipeText(recipeText) {
         const lines = recipeText.split('\n').map(line => line.trim()).filter(line => line);
         
+        if (lines.length < 2) {
+            throw new Error('Recipe text is too short. Please provide a recipe with ingredients.');
+        }
+        
         // Find recipe name (usually first non-empty line)
         let recipeName = lines[0] || 'Untitled Recipe';
         
         // Find ingredients section
         const ingredientsStartIndex = this.findIngredientsSectionStart(lines);
-        const ingredientsEndIndex = this.findIngredientsSectionEnd(lines, ingredientsStartIndex);
+        let ingredientsEndIndex = this.findIngredientsSectionEnd(lines, ingredientsStartIndex);
         
         if (ingredientsStartIndex === -1) {
-            throw new Error('Could not find ingredients section. Please make sure your recipe has an "Ingredients:" section.');
+            throw new Error(`Could not automatically detect ingredients. 
+
+Please try formatting your recipe like this:
+
+Recipe Name
+
+Ingredients:
+- 2 cups flour
+- 1 cup milk  
+- 3 eggs
+
+Instructions:
+1. Mix ingredients...
+
+Or make sure ingredients have measurements (2 cups, 1 tbsp, etc.)`);
+        }
+        
+        // If we found ingredients but no clear end, try to be smart about it
+        if (ingredientsEndIndex === ingredientsStartIndex + 1 || ingredientsEndIndex === lines.length) {
+            // Look for a better endpoint
+            let betterEnd = -1;
+            for (let i = ingredientsStartIndex + 1; i < lines.length; i++) {
+                if (!this.looksLikeIngredient(lines[i]) && lines[i].trim().length > 0) {
+                    // Found a line that doesn't look like an ingredient
+                    if (i - ingredientsStartIndex >= 3) { // We have at least 2 ingredients
+                        betterEnd = i;
+                        break;
+                    }
+                }
+            }
+            if (betterEnd > 0) {
+                ingredientsEndIndex = betterEnd;
+            }
         }
         
         // Extract ingredient lines
@@ -53,6 +89,11 @@ class RecipeTextParser {
             }
         });
         
+        // Validate we found some ingredients
+        if (Object.keys(ingredients).length === 0) {
+            throw new Error('No ingredients could be parsed. Please check your recipe format and make sure ingredients have quantities (like "2 cups flour").');
+        }
+        
         return {
             name: recipeName,
             servings: servings,
@@ -62,13 +103,93 @@ class RecipeTextParser {
     }
     
     findIngredientsSectionStart(lines) {
+        // Try multiple strategies to find ingredients
+        
+        // Strategy 1: Look for explicit "Ingredients:" header
         for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].toLowerCase();
-            if (line.includes('ingredient') && (line.includes(':') || line.endsWith('s'))) {
+            const line = lines[i].toLowerCase().trim();
+            if ((line.includes('ingredient') && (line.includes(':') || line.endsWith('s'))) ||
+                line === 'ingredients' || line === 'ingredients:') {
                 return i;
             }
         }
+        
+        // Strategy 2: Look for lines that start with measurements/bullet points
+        let ingredientLikeLines = 0;
+        let potentialStart = -1;
+        
+        for (let i = 1; i < lines.length; i++) { // Start from line 1 (skip recipe title)
+            const line = lines[i].trim();
+            
+            // Skip empty lines and obvious non-ingredient lines
+            if (!line || line.length < 3) continue;
+            if (line.toLowerCase().includes('instruction') || 
+                line.toLowerCase().includes('direction') ||
+                line.toLowerCase().includes('method') ||
+                line.toLowerCase().includes('step')) {
+                break;
+            }
+            
+            // Check if line looks like an ingredient
+            if (this.looksLikeIngredient(line)) {
+                if (potentialStart === -1) {
+                    potentialStart = i;
+                }
+                ingredientLikeLines++;
+                
+                // If we find 2+ ingredient-like lines in a row, assume we found the start
+                if (ingredientLikeLines >= 2) {
+                    return potentialStart;
+                }
+            } else {
+                // Reset if we hit a non-ingredient line
+                ingredientLikeLines = 0;
+                potentialStart = -1;
+            }
+        }
+        
+        // Strategy 3: If we found at least one ingredient-like line, use it
+        if (potentialStart !== -1) {
+            return potentialStart;
+        }
+        
+        // Strategy 4: Last resort - start from line 1 if it has any measurements
+        for (let i = 1; i < Math.min(10, lines.length); i++) {
+            if (this.looksLikeIngredient(lines[i])) {
+                return i;
+            }
+        }
+        
         return -1;
+    }
+    
+    looksLikeIngredient(line) {
+        if (!line || line.trim().length < 3) return false;
+        
+        const trimmed = line.trim().toLowerCase();
+        
+        // Check for common ingredient patterns
+        const ingredientPatterns = [
+            /^[-•*]\s*\d+/, // Bullet point with number: "- 2 cups"
+            /^[-•*]\s*\w/, // Any bullet point: "- flour"
+            /^\d+[\s\/]/, // Starts with number: "2 cups", "1/2 lb"
+            /^\d+\.?\d*\s+(cup|tbsp|tsp|lb|oz|gram|clove|can|bottle|jar)/i, // Number + unit
+        ];
+        
+        for (let pattern of ingredientPatterns) {
+            if (pattern.test(trimmed)) return true;
+        }
+        
+        // Check for common measurement units anywhere in the line
+        const hasUnit = this.commonUnits.some(unit => 
+            trimmed.includes(` ${unit} `) || trimmed.includes(` ${unit},`) || 
+            trimmed.includes(` ${unit}.`) || trimmed.endsWith(` ${unit}`)
+        );
+        
+        // Check for numbers (ingredients usually have quantities)
+        const hasNumber = /\d/.test(trimmed);
+        
+        return hasUnit || hasNumber;
     }
     
     findIngredientsSectionEnd(lines, startIndex) {
